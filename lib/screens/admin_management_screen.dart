@@ -37,7 +37,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Painel de Gestão Estação Elite'),
+        title: const Text('Gestão de Lojas & Cadastros'),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -47,7 +47,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
           tabs: const [
             Tab(text: 'Serviços'),
             Tab(text: 'Profissionais'),
-            Tab(text: 'Produtos'),
+            Tab(text: 'Produtos & Estoque'),
             Tab(text: 'Pacotes'),
             Tab(text: 'Unidades/Lojas'),
           ],
@@ -56,19 +56,10 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // 1. Gestão de Serviços
           _buildServicesTab(provider),
-
-          // 2. Gestão de Profissionais & Horários
           _buildProfessionalsTab(provider),
-
-          // 3. Gestão de Produtos & Valores
           _buildProductsTab(provider),
-
-          // 4. Gestão de Pacotes & Combos
           _buildPackagesTab(provider),
-
-          // 5. Gestão de Lojas (Matriz & Filiais)
           _buildBranchesTab(provider),
         ],
       ),
@@ -81,7 +72,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddServiceDialog(provider),
+        onPressed: () => _showServiceFormDialog(provider, null),
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add),
@@ -102,7 +93,14 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
             ),
             child: Row(
               children: [
-                const Icon(Icons.content_cut, color: AppTheme.primaryGold),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.content_cut, color: AppTheme.primaryGold),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -112,7 +110,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.white)),
-                      Text('${service.durationMinutes} min • R\$ ${service.price.toStringAsFixed(2)}',
+                      Text(
+                          '${service.durationMinutes} min • R\$ ${service.price.toStringAsFixed(2)}',
                           style: const TextStyle(
                               color: AppTheme.primaryGold, fontSize: 13)),
                       Text(service.description,
@@ -120,6 +119,10 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
                               color: Colors.white54, fontSize: 11)),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: AppTheme.primaryGold),
+                  onPressed: () => _showServiceFormDialog(provider, service),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline,
@@ -136,27 +139,30 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
     );
   }
 
-  void _showAddServiceDialog(BarbershopProvider provider) {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    final priceController = TextEditingController();
-    final durationController = TextEditingController();
-    String category = 'Cabelo';
+  void _showServiceFormDialog(
+      BarbershopProvider provider, ServiceItem? existing) {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final descController = TextEditingController(text: existing?.description ?? '');
+    final priceController =
+        TextEditingController(text: existing?.price.toString() ?? '');
+    final durationController =
+        TextEditingController(text: existing?.durationMinutes.toString() ?? '');
+    final imageController =
+        TextEditingController(text: existing?.imageUrl ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkSurface,
-        title: const Text('Cadastrar Novo Serviço',
-            style: TextStyle(color: Colors.white)),
+        title: Text(existing == null ? 'Cadastrar Serviço' : 'Editar Serviço',
+            style: const TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: titleController,
-                decoration:
-                    const InputDecoration(labelText: 'Nome do Serviço'),
+                decoration: const InputDecoration(labelText: 'Nome do Serviço'),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -167,15 +173,20 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
               TextField(
                 controller: priceController,
                 keyboardType: TextInputType.number,
-                decoration:
-                    const InputDecoration(labelText: 'Preço (R\$)'),
+                decoration: const InputDecoration(labelText: 'Preço (R\$)'),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: durationController,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                    labelText: 'Duração em minutos'),
+                decoration:
+                    const InputDecoration(labelText: 'Duração em minutos'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: imageController,
+                decoration:
+                    const InputDecoration(labelText: 'URL da Foto do Serviço'),
               ),
             ],
           ),
@@ -188,17 +199,23 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
             onPressed: () {
               if (titleController.text.isNotEmpty &&
                   priceController.text.isNotEmpty) {
-                provider.addService(
-                  ServiceItem(
-                    id: 's_${DateTime.now().millisecondsSinceEpoch}',
-                    title: titleController.text,
-                    description: descController.text,
-                    price: double.tryParse(priceController.text) ?? 50.0,
-                    durationMinutes:
-                        int.tryParse(durationController.text) ?? 30,
-                    category: category,
-                  ),
+                final item = ServiceItem(
+                  id: existing?.id ?? 's_${DateTime.now().millisecondsSinceEpoch}',
+                  title: titleController.text,
+                  description: descController.text,
+                  price: double.tryParse(priceController.text) ?? 50.0,
+                  durationMinutes:
+                      int.tryParse(durationController.text) ?? 30,
+                  category: 'Geral',
+                  imageUrl: imageController.text,
                 );
+
+                if (existing == null) {
+                  provider.addService(item);
+                } else {
+                  provider.updateService(item);
+                }
+
                 Navigator.pop(context);
               }
             },
@@ -215,7 +232,7 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddProfessionalDialog(provider),
+        onPressed: () => _showProfessionalFormDialog(provider, null),
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.person_add),
@@ -253,15 +270,19 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.white)),
-                      Text(barber.role,
+                      Text('${barber.role} • E-mail: ${barber.email}',
                           style: const TextStyle(
-                              color: AppTheme.primaryGold, fontSize: 13)),
-                      Text(
-                          'Horários: ${barber.availableTimeSlots.join(', ')}',
+                              color: AppTheme.primaryGold, fontSize: 12)),
+                      Text('Horário: ${barber.workingHours}',
                           style: const TextStyle(
                               color: Colors.white54, fontSize: 11)),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: AppTheme.primaryGold),
+                  onPressed: () =>
+                      _showProfessionalFormDialog(provider, barber),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline,
@@ -278,17 +299,23 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
     );
   }
 
-  void _showAddProfessionalDialog(BarbershopProvider provider) {
-    final nameController = TextEditingController();
-    final roleController = TextEditingController();
-    final bioController = TextEditingController();
+  void _showProfessionalFormDialog(
+      BarbershopProvider provider, Professional? existing) {
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final emailController = TextEditingController(text: existing?.email ?? '');
+    final roleController = TextEditingController(text: existing?.role ?? '');
+    final hoursController =
+        TextEditingController(text: existing?.workingHours ?? '08:00 - 19:00');
+    final avatarController =
+        TextEditingController(text: existing?.avatarUrl ?? '');
+    final bioController = TextEditingController(text: existing?.bio ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkSurface,
-        title: const Text('Cadastrar Barbeiro/Profissional',
-            style: TextStyle(color: Colors.white)),
+        title: Text(existing == null ? 'Cadastrar Barbeiro' : 'Editar Barbeiro',
+            style: const TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -299,13 +326,35 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
               ),
               const SizedBox(height: 10),
               TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'E-mail Google do Barbeiro',
+                  hintText: 'ex: carlos.barba@estacaoelite.com',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
                 controller: roleController,
-                decoration: const InputDecoration(labelText: 'Especialidade / Cargo'),
+                decoration:
+                    const InputDecoration(labelText: 'Especialidade / Cargo'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: hoursController,
+                decoration:
+                    const InputDecoration(labelText: 'Horário de Atendimento'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: avatarController,
+                decoration:
+                    const InputDecoration(labelText: 'URL da Foto / Avatar'),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: bioController,
-                decoration: const InputDecoration(labelText: 'Biografia / Resumo'),
+                decoration: const InputDecoration(labelText: 'Biografia'),
               ),
             ],
           ),
@@ -317,29 +366,30 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
           ElevatedButton(
             onPressed: () {
               if (nameController.text.isNotEmpty) {
-                provider.addProfessional(
-                  Professional(
-                    id: 'p_${DateTime.now().millisecondsSinceEpoch}',
-                    name: nameController.text,
-                    role: roleController.text.isNotEmpty
-                        ? roleController.text
-                        : 'Barbeiro Elite',
-                    avatarUrl: '',
-                    rating: 5.0,
-                    branchIds: ['b1', 'b2', 'b3'],
-                    workingDays: [1, 2, 3, 4, 5, 6],
-                    availableTimeSlots: [
-                      '09:00',
-                      '10:00',
-                      '11:00',
-                      '14:00',
-                      '15:00',
-                      '16:00',
-                      '17:00'
-                    ],
-                    bio: bioController.text,
-                  ),
+                final item = Professional(
+                  id: existing?.id ??
+                      'p_${DateTime.now().millisecondsSinceEpoch}',
+                  name: nameController.text,
+                  email: emailController.text,
+                  role: roleController.text.isNotEmpty
+                      ? roleController.text
+                      : 'Barbeiro Elite',
+                  avatarUrl: avatarController.text,
+                  rating: existing?.rating ?? 5.0,
+                  branchIds: existing?.branchIds ?? ['b1', 'b2', 'b3'],
+                  workingHours: hoursController.text,
+                  workingDays: existing?.workingDays ?? [1, 2, 3, 4, 5, 6],
+                  availableTimeSlots: existing?.availableTimeSlots ??
+                      ['09:00', '10:00', '11:00', '14:00', '15:30', '17:00'],
+                  bio: bioController.text,
                 );
+
+                if (existing == null) {
+                  provider.addProfessional(item);
+                } else {
+                  provider.updateProfessional(item);
+                }
+
                 Navigator.pop(context);
               }
             },
@@ -350,13 +400,14 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
     );
   }
 
-  // --- TAB 3: PRODUTOS ---
+  // --- TAB 3: PRODUTOS & ESTOQUE ---
   Widget _buildProductsTab(BarbershopProvider provider) {
     final products = provider.products;
+    final activeBranch = provider.selectedBranch;
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddProductDialog(provider),
+        onPressed: () => _showProductFormDialog(provider, null),
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add_shopping_cart),
@@ -367,6 +418,8 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
         itemCount: products.length,
         itemBuilder: (context, index) {
           final product = products[index];
+          final stock = product.stockByBranch[activeBranch.id] ?? 0;
+
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
@@ -387,14 +440,32 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.white)),
-                      Text('R\$ ${product.price.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                              color: AppTheme.primaryGold, fontSize: 13)),
-                      Text(product.description,
-                          style: const TextStyle(
-                              color: Colors.white54, fontSize: 11)),
+                      Text(
+                        'R\$ ${product.price.toStringAsFixed(2)} • Estoque na loja: $stock un.',
+                        style: const TextStyle(
+                            color: AppTheme.primaryGold, fontSize: 12),
+                      ),
                     ],
                   ),
+                ),
+                // Botão de Estorno de Compra Não Confirmada
+                IconButton(
+                  tooltip: 'Estornar/Liberar Estoque (+5)',
+                  icon: const Icon(Icons.restore, color: AppTheme.warningOrange),
+                  onPressed: () {
+                    provider.releaseProductStock(
+                        product.id, activeBranch.id, 5);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'Estoque do produto "${product.name}" estornado (+5 un).'),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: AppTheme.primaryGold),
+                  onPressed: () => _showProductFormDialog(provider, product),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline,
@@ -411,17 +482,23 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
     );
   }
 
-  void _showAddProductDialog(BarbershopProvider provider) {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    final priceController = TextEditingController();
+  void _showProductFormDialog(BarbershopProvider provider, Product? existing) {
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final descController = TextEditingController(text: existing?.description ?? '');
+    final priceController =
+        TextEditingController(text: existing?.price.toString() ?? '');
+    final imageController =
+        TextEditingController(text: existing?.imageUrl ?? '');
+    final stockController = TextEditingController(
+        text: (existing?.stockByBranch[provider.selectedBranch.id] ?? 20)
+            .toString());
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkSurface,
-        title: const Text('Cadastrar Produto',
-            style: TextStyle(color: Colors.white)),
+        title: Text(existing == null ? 'Cadastrar Produto' : 'Editar Produto',
+            style: const TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -441,6 +518,20 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Preço (R\$)'),
               ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: stockController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Estoque para ${provider.selectedBranch.name}',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: imageController,
+                decoration:
+                    const InputDecoration(labelText: 'URL da Foto do Produto'),
+              ),
             ],
           ),
         ),
@@ -452,18 +543,30 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
             onPressed: () {
               if (nameController.text.isNotEmpty &&
                   priceController.text.isNotEmpty) {
-                provider.addProduct(
-                  Product(
-                    id: 'pr_${DateTime.now().millisecondsSinceEpoch}',
-                    name: nameController.text,
-                    description: descController.text,
-                    price: double.tryParse(priceController.text) ?? 39.90,
-                    category: 'Cosméticos',
-                    imageUrl: '',
-                    stockByBranch: {'b1': 20, 'b2': 20, 'b3': 20},
-                    loyaltyPointsBonus: 15,
-                  ),
+                final activeBranchId = provider.selectedBranch.id;
+                final updatedStock = Map<String, int>.from(
+                    existing?.stockByBranch ?? {'b1': 20, 'b2': 20, 'b3': 20});
+                updatedStock[activeBranchId] =
+                    int.tryParse(stockController.text) ?? 20;
+
+                final item = Product(
+                  id: existing?.id ??
+                      'pr_${DateTime.now().millisecondsSinceEpoch}',
+                  name: nameController.text,
+                  description: descController.text,
+                  price: double.tryParse(priceController.text) ?? 39.90,
+                  category: 'Cosméticos',
+                  imageUrl: imageController.text,
+                  stockByBranch: updatedStock,
+                  loyaltyPointsBonus: 15,
                 );
+
+                if (existing == null) {
+                  provider.addProduct(item);
+                } else {
+                  provider.updateProduct(item);
+                }
+
                 Navigator.pop(context);
               }
             },
@@ -480,11 +583,11 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddPackageDialog(provider),
+        onPressed: () => _showPackageFormDialog(provider, null),
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.stars),
-        label: const Text('Novo Pacote/Combo'),
+        label: const Text('Novo Pacote'),
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -512,11 +615,15 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
                               fontWeight: FontWeight.bold,
                               color: Colors.white)),
                       Text(
-                          'De R\$ ${pkg.originalPrice.toStringAsFixed(2)} por R\$ ${pkg.packagePrice.toStringAsFixed(2)}',
+                          'Por R\$ ${pkg.packagePrice.toStringAsFixed(2)} (De R\$ ${pkg.originalPrice.toStringAsFixed(2)})',
                           style: const TextStyle(
-                              color: AppTheme.primaryGold, fontSize: 13)),
+                              color: AppTheme.primaryGold, fontSize: 12)),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: AppTheme.primaryGold),
+                  onPressed: () => _showPackageFormDialog(provider, pkg),
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline,
@@ -533,18 +640,21 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
     );
   }
 
-  void _showAddPackageDialog(BarbershopProvider provider) {
-    final titleController = TextEditingController();
-    final descController = TextEditingController();
-    final origPriceController = TextEditingController();
-    final pkgPriceController = TextEditingController();
+  void _showPackageFormDialog(
+      BarbershopProvider provider, ComboPackage? existing) {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final descController = TextEditingController(text: existing?.description ?? '');
+    final origPriceController =
+        TextEditingController(text: existing?.originalPrice.toString() ?? '');
+    final pkgPriceController =
+        TextEditingController(text: existing?.packagePrice.toString() ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkSurface,
-        title: const Text('Cadastrar Pacote Promo',
-            style: TextStyle(color: Colors.white)),
+        title: Text(existing == null ? 'Cadastrar Pacote' : 'Editar Pacote',
+            style: const TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -583,20 +693,27 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
             onPressed: () {
               if (titleController.text.isNotEmpty &&
                   pkgPriceController.text.isNotEmpty) {
-                provider.addComboPackage(
-                  ComboPackage(
-                    id: 'pkg_${DateTime.now().millisecondsSinceEpoch}',
-                    title: titleController.text,
-                    description: descController.text,
-                    originalPrice:
-                        double.tryParse(origPriceController.text) ?? 150.0,
-                    packagePrice:
-                        double.tryParse(pkgPriceController.text) ?? 120.0,
-                    serviceNames: ['Corte', 'Barba'],
-                    productNames: ['Pomada Matte'],
-                    bonusPoints: 50,
-                  ),
+                final item = ComboPackage(
+                  id: existing?.id ??
+                      'pkg_${DateTime.now().millisecondsSinceEpoch}',
+                  title: titleController.text,
+                  description: descController.text,
+                  originalPrice:
+                      double.tryParse(origPriceController.text) ?? 150.0,
+                  packagePrice:
+                      double.tryParse(pkgPriceController.text) ?? 120.0,
+                  serviceNames: existing?.serviceNames ?? ['Corte', 'Barba'],
+                  productNames:
+                      existing?.productNames ?? ['Pomada Matte'],
+                  bonusPoints: 50,
                 );
+
+                if (existing == null) {
+                  provider.addComboPackage(item);
+                } else {
+                  provider.updateComboPackage(item);
+                }
+
                 Navigator.pop(context);
               }
             },
@@ -607,17 +724,17 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
     );
   }
 
-  // --- TAB 5: LOJAS / UNIDADES ---
+  // --- TAB 5: UNIDADES / LOJAS ---
   Widget _buildBranchesTab(BarbershopProvider provider) {
     final branches = provider.branches;
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddBranchDialog(provider),
+        onPressed: () => _showBranchFormDialog(provider, null),
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.store),
-        label: const Text('Nova Filial/Loja'),
+        label: const Text('Nova Loja'),
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -643,27 +760,19 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Text(branch.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white)),
-                          if (branch.isMain) ...[
-                            const SizedBox(width: 6),
-                            const Text('(MATRIZ)',
-                                style: TextStyle(
-                                    color: AppTheme.primaryGold,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold)),
-                          ],
-                        ],
-                      ),
+                      Text(branch.name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                       Text(branch.address,
                           style: const TextStyle(
                               color: Colors.white54, fontSize: 11)),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: AppTheme.primaryGold),
+                  onPressed: () => _showBranchFormDialog(provider, branch),
                 ),
               ],
             ),
@@ -673,17 +782,19 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
     );
   }
 
-  void _showAddBranchDialog(BarbershopProvider provider) {
-    final nameController = TextEditingController();
-    final addressController = TextEditingController();
-    final phoneController = TextEditingController();
+  void _showBranchFormDialog(BarbershopProvider provider, Branch? existing) {
+    final nameController = TextEditingController(text: existing?.name ?? '');
+    final addressController = TextEditingController(text: existing?.address ?? '');
+    final phoneController = TextEditingController(text: existing?.phone ?? '');
+    final hoursController =
+        TextEditingController(text: existing?.openingHours ?? 'Seg - Sáb: 08:00 - 20:00');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.darkSurface,
-        title: const Text('Cadastrar Nova Loja / Filial',
-            style: TextStyle(color: Colors.white)),
+        title: Text(existing == null ? 'Cadastrar Loja' : 'Editar Loja',
+            style: const TextStyle(color: Colors.white)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -700,7 +811,13 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
               const SizedBox(height: 10),
               TextField(
                 controller: phoneController,
-                decoration: const InputDecoration(labelText: 'Telefone de Contato'),
+                decoration: const InputDecoration(labelText: 'Telefone'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: hoursController,
+                decoration:
+                    const InputDecoration(labelText: 'Horário de Atendimento'),
               ),
             ],
           ),
@@ -712,17 +829,24 @@ class _AdminManagementScreenState extends State<AdminManagementScreen>
           ElevatedButton(
             onPressed: () {
               if (nameController.text.isNotEmpty) {
-                provider.addBranch(
-                  Branch(
-                    id: 'b_${DateTime.now().millisecondsSinceEpoch}',
-                    name: nameController.text,
-                    address: addressController.text,
-                    phone: phoneController.text,
-                    isMain: false,
-                    openingHours: 'Seg - Sáb: 09:00 - 20:00',
-                    imageUrl: '',
-                  ),
+                final item = Branch(
+                  id: existing?.id ??
+                      'b_${DateTime.now().millisecondsSinceEpoch}',
+                  name: nameController.text,
+                  address: addressController.text,
+                  phone: phoneController.text,
+                  isMain: existing?.isMain ?? false,
+                  openingHours: hoursController.text,
+                  imageUrl: existing?.imageUrl ?? '',
+                  managerEmails: existing?.managerEmails ?? [],
                 );
+
+                if (existing == null) {
+                  provider.addBranch(item);
+                } else {
+                  provider.updateBranch(item);
+                }
+
                 Navigator.pop(context);
               }
             },

@@ -11,7 +11,7 @@ import '../models/user_profile.dart';
 
 class BarbershopProvider extends ChangeNotifier {
   // Current app version constant
-  static const String currentVersion = 'barberShopV003';
+  static const String currentVersion = 'barberShopV004';
 
   // Super Admin fixed master email
   static const String superAdminEmail = 'elcortelini@gmail.com';
@@ -102,14 +102,12 @@ class BarbershopProvider extends ChangeNotifier {
     if (cleanEmail == superAdminEmail.toLowerCase()) {
       resolvedRole = UserRole.superAdmin;
     } else {
-      // 1. Check if this email is assigned as a manager to any branch
       final isManager = _branches.any((b) =>
           b.managerEmails.any((m) => m.toLowerCase() == cleanEmail));
 
       if (isManager) {
         resolvedRole = UserRole.storeOwner;
       } else {
-        // 2. Check if this email belongs to a registered barber professional
         final isBarber = _professionals.any((p) => p.email.toLowerCase() == cleanEmail);
         if (isBarber) {
           resolvedRole = UserRole.barberProfessional;
@@ -157,7 +155,6 @@ class BarbershopProvider extends ChangeNotifier {
     }
   }
 
-  // Super Admin: Remove manager email from branch
   void removeManagerFromBranch(String branchId, String managerEmail) {
     final cleanEmail = managerEmail.trim().toLowerCase();
     final idx = _branches.indexWhere((b) => b.id == branchId);
@@ -191,6 +188,19 @@ class BarbershopProvider extends ChangeNotifier {
       _appointments[index] = _appointments[index].copyWith(
         status: AppointmentStatus.completed,
       );
+      notifyListeners();
+    }
+  }
+
+  // Product Stock Release (Estorno de Compra Não Confirmada)
+  void releaseProductStock(String productId, String branchId, int quantity) {
+    final idx = _products.indexWhere((p) => p.id == productId);
+    if (idx != -1) {
+      final updatedMap = Map<String, int>.from(_products[idx].stockByBranch);
+      final currentStock = updatedMap[branchId] ?? 0;
+      updatedMap[branchId] = currentStock + quantity;
+
+      _products[idx] = _products[idx].copyWith(stockByBranch: updatedMap);
       notifyListeners();
     }
   }
@@ -284,10 +294,18 @@ class BarbershopProvider extends ChangeNotifier {
     return false;
   }
 
-  // Management (CRUD) Methods
+  // Management (CRUD: CREATE & UPDATE) Methods
   void addService(ServiceItem service) {
     _services.add(service);
     notifyListeners();
+  }
+
+  void updateService(ServiceItem service) {
+    final idx = _services.indexWhere((s) => s.id == service.id);
+    if (idx != -1) {
+      _services[idx] = service;
+      notifyListeners();
+    }
   }
 
   void removeService(String serviceId) {
@@ -300,6 +318,14 @@ class BarbershopProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateProfessional(Professional professional) {
+    final idx = _professionals.indexWhere((p) => p.id == professional.id);
+    if (idx != -1) {
+      _professionals[idx] = professional;
+      notifyListeners();
+    }
+  }
+
   void removeProfessional(String professionalId) {
     _professionals.removeWhere((p) => p.id == professionalId);
     notifyListeners();
@@ -308,6 +334,14 @@ class BarbershopProvider extends ChangeNotifier {
   void addProduct(Product product) {
     _products.add(product);
     notifyListeners();
+  }
+
+  void updateProduct(Product product) {
+    final idx = _products.indexWhere((p) => p.id == product.id);
+    if (idx != -1) {
+      _products[idx] = product;
+      notifyListeners();
+    }
   }
 
   void removeProduct(String productId) {
@@ -320,6 +354,14 @@ class BarbershopProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateComboPackage(ComboPackage combo) {
+    final idx = _packages.indexWhere((p) => p.id == combo.id);
+    if (idx != -1) {
+      _packages[idx] = combo;
+      notifyListeners();
+    }
+  }
+
   void removeComboPackage(String packageId) {
     _packages.removeWhere((p) => p.id == packageId);
     notifyListeners();
@@ -328,6 +370,17 @@ class BarbershopProvider extends ChangeNotifier {
   void addBranch(Branch branch) {
     _branches.add(branch);
     notifyListeners();
+  }
+
+  void updateBranch(Branch branch) {
+    final idx = _branches.indexWhere((b) => b.id == branch.id);
+    if (idx != -1) {
+      _branches[idx] = branch;
+      if (_selectedBranch.id == branch.id) {
+        _selectedBranch = branch;
+      }
+      notifyListeners();
+    }
   }
 
   // Seed Initial Data
@@ -367,7 +420,6 @@ class BarbershopProvider extends ChangeNotifier {
 
     _selectedBranch = _branches.first;
 
-    // Initial default user: Super Admin
     _currentUser = UserProfile(
       id: 'usr_super',
       name: 'elcortelini',
@@ -385,6 +437,8 @@ class BarbershopProvider extends ChangeNotifier {
         durationMinutes: 45,
         category: 'Cabelo',
         iconName: 'content_cut',
+        imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1',
+        professionalIds: ['p1', 'p2'],
       ),
       ServiceItem(
         id: 's2',
@@ -394,6 +448,8 @@ class BarbershopProvider extends ChangeNotifier {
         durationMinutes: 40,
         category: 'Barba',
         iconName: 'face',
+        imageUrl: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033',
+        professionalIds: ['p1', 'p3'],
       ),
       ServiceItem(
         id: 's3',
@@ -403,6 +459,8 @@ class BarbershopProvider extends ChangeNotifier {
         durationMinutes: 60,
         category: 'Estética',
         iconName: 'psychology',
+        imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70',
+        professionalIds: ['p1', 'p3'],
       ),
       ServiceItem(
         id: 's4',
@@ -412,6 +470,8 @@ class BarbershopProvider extends ChangeNotifier {
         durationMinutes: 40,
         category: 'Tratamento',
         iconName: 'spa',
+        imageUrl: '',
+        professionalIds: ['p3'],
       ),
       ServiceItem(
         id: 's5',
@@ -421,6 +481,8 @@ class BarbershopProvider extends ChangeNotifier {
         durationMinutes: 20,
         category: 'Cabelo',
         iconName: 'brush',
+        imageUrl: '',
+        professionalIds: ['p1', 'p2', 'p3'],
       ),
     ]);
 
@@ -433,6 +495,8 @@ class BarbershopProvider extends ChangeNotifier {
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
         rating: 4.9,
         branchIds: ['b1', 'b3'],
+        serviceIds: ['s1', 's2', 's3', 's5'],
+        workingHours: '08:00 - 19:00',
         workingDays: [1, 2, 3, 4, 5, 6],
         availableTimeSlots: ['09:00', '10:00', '11:00', '14:00', '15:30', '17:00', '18:30'],
         bio: 'Mais de 12 anos de experiência em cortes clássicos, fade e visagismo masculino.',
@@ -445,6 +509,8 @@ class BarbershopProvider extends ChangeNotifier {
         avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
         rating: 4.8,
         branchIds: ['b1', 'b2'],
+        serviceIds: ['s1', 's5'],
+        workingHours: '09:00 - 20:00',
         workingDays: [1, 2, 3, 4, 5],
         availableTimeSlots: ['09:30', '10:30', '13:00', '15:00', '16:30', '19:00'],
         bio: 'Referência em cortes urbanos, freestyle e manutenção de barbas volumosas.',
@@ -457,6 +523,8 @@ class BarbershopProvider extends ChangeNotifier {
         avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e',
         rating: 5.0,
         branchIds: ['b2', 'b3'],
+        serviceIds: ['s2', 's3', 's4', 's5'],
+        workingHours: '10:00 - 21:00',
         workingDays: [2, 3, 4, 5, 6],
         availableTimeSlots: ['10:00', '11:30', '14:30', '16:00', '17:30', '19:30'],
         bio: 'Especializado em harmonização capilar e tratamento de couro cabeludo.',
@@ -471,7 +539,7 @@ class BarbershopProvider extends ChangeNotifier {
         price: 59.90,
         category: 'Pomadas',
         imageUrl: 'https://images.unsplash.com/photo-1626806787461-102c1bfaaea1',
-        stockByBranch: {'b1': 25, 'b2': 18, 'b3': 12},
+        stockByBranch: {'b1': 25, 'b2': 12, 'b3': 8},
         loyaltyPointsBonus: 20,
       ),
       Product(
@@ -491,7 +559,7 @@ class BarbershopProvider extends ChangeNotifier {
         price: 45.00,
         category: 'Shampoos',
         imageUrl: 'https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d',
-        stockByBranch: {'b1': 40, 'b2': 30, 'b3': 25},
+        stockByBranch: {'b1': 40, 'b2': 5, 'b3': 25},
         loyaltyPointsBonus: 15,
       ),
     ]);
@@ -507,6 +575,7 @@ class BarbershopProvider extends ChangeNotifier {
         productNames: ['Pomada Matte Estação Elite'],
         bonusPoints: 80,
         badgeText: 'MAIS POPULAR',
+        imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1',
       ),
       ComboPackage(
         id: 'pkg2',
@@ -518,6 +587,7 @@ class BarbershopProvider extends ChangeNotifier {
         productNames: ['Óleo Hidratante para Barba Premium'],
         bonusPoints: 50,
         badgeText: 'ECONOMIA DE R\$ 20',
+        imageUrl: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033',
       ),
       ComboPackage(
         id: 'pkg3',
@@ -529,6 +599,7 @@ class BarbershopProvider extends ChangeNotifier {
         productNames: ['Kit Completo de Cuidados'],
         bonusPoints: 150,
         badgeText: 'VIP & LUXO',
+        imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70',
       ),
     ]);
 
