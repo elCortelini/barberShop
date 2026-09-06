@@ -679,6 +679,15 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const Divider(height: 20),
+                  const Text(
+                    'Versão Oficial: ${BarbershopProvider.currentVersion}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryGold,
+                    ),
+                  ),
                 ],
               ),
             ),

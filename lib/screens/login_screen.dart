@@ -131,9 +131,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 30),
 
-            // Quick Role Switcher Buttons for Demo
+            // Quick Role Switcher Buttons for Demo (4 Roles)
             const Text(
-              'ATALHOS DE TESTE RÁPIDO DOS 3 NÍVEIS',
+              'ATALHOS DE TESTE RÁPIDO DOS 4 NÍVEIS',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -177,9 +177,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: 10),
 
-            // 3. Client Button
+            // 3. Barber Professional Button
             _RoleTestTile(
-              roleTitle: '3. Cliente da Barbearia',
+              roleTitle: '3. Profissional Barbeiro',
+              email: 'carlos.barba@estacaoelite.com',
+              badgeColor: AppTheme.successGreen,
+              icon: Icons.content_cut,
+              onTap: () {
+                provider.loginWithGoogle(
+                  email: 'carlos.barba@estacaoelite.com',
+                  name: 'Carlos Barba Silva',
+                );
+                _notifyLogged(context, 'Profissional Barbeiro');
+              },
+            ),
+
+            const SizedBox(height: 10),
+
+            // 4. Client Button
+            _RoleTestTile(
+              roleTitle: '4. Cliente da Barbearia',
               email: 'cliente.marcos@gmail.com',
               badgeColor: AppTheme.infoBlue,
               icon: Icons.person,
@@ -192,7 +209,15 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 36),
+
+            // Footer Version Info
+            const Text(
+              'Estação Elite Barbearia • Versão: ${BarbershopProvider.currentVersion}',
+              style: TextStyle(fontSize: 12, color: Colors.white38),
+            ),
+
+            const SizedBox(height: 20),
           ],
         ),
       ),

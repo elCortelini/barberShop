@@ -10,6 +10,9 @@ import '../models/promo_banner.dart';
 import '../models/user_profile.dart';
 
 class BarbershopProvider extends ChangeNotifier {
+  // Current app version constant
+  static const String currentVersion = 'barberShopV003';
+
   // Super Admin fixed master email
   static const String superAdminEmail = 'elcortelini@gmail.com';
 
@@ -70,9 +73,23 @@ class BarbershopProvider extends ChangeNotifier {
         .toList();
   }
 
+  // Appointments for the currently logged-in Barber
+  List<Appointment> get barberAppointments {
+    final cleanEmail = _currentUser.email.trim().toLowerCase();
+    final matchingPro = _professionals.firstWhere(
+      (p) => p.email.trim().toLowerCase() == cleanEmail,
+      orElse: () => _professionals.first,
+    );
+
+    return _appointments.where((a) =>
+        a.professionalId == matchingPro.id ||
+        a.professionalName.toLowerCase().contains(matchingPro.name.toLowerCase().split(' ').first)).toList();
+  }
+
   // Roles & Permissions helper
   bool get isSuperAdmin => _currentUser.role == UserRole.superAdmin;
   bool get isStoreOwner => _currentUser.role == UserRole.storeOwner || isSuperAdmin;
+  bool get isBarberProfessional => _currentUser.role == UserRole.barberProfessional;
   bool get isClient => _currentUser.role == UserRole.client;
 
   // Authenticaton & Google Login
@@ -85,11 +102,18 @@ class BarbershopProvider extends ChangeNotifier {
     if (cleanEmail == superAdminEmail.toLowerCase()) {
       resolvedRole = UserRole.superAdmin;
     } else {
-      // Check if this email is assigned as a manager to any branch
+      // 1. Check if this email is assigned as a manager to any branch
       final isManager = _branches.any((b) =>
           b.managerEmails.any((m) => m.toLowerCase() == cleanEmail));
+
       if (isManager) {
         resolvedRole = UserRole.storeOwner;
+      } else {
+        // 2. Check if this email belongs to a registered barber professional
+        final isBarber = _professionals.any((p) => p.email.toLowerCase() == cleanEmail);
+        if (isBarber) {
+          resolvedRole = UserRole.barberProfessional;
+        }
       }
     }
 
@@ -118,7 +142,6 @@ class BarbershopProvider extends ChangeNotifier {
         currentList.add(cleanEmail);
         _branches[idx] = _branches[idx].copyWith(managerEmails: currentList);
 
-        // If logged-in user email was assigned, update current role
         if (_currentUser.email.toLowerCase() == cleanEmail && _currentUser.role != UserRole.superAdmin) {
           _currentUser = UserProfile(
             id: _currentUser.id,
@@ -143,7 +166,6 @@ class BarbershopProvider extends ChangeNotifier {
       currentList.removeWhere((e) => e.toLowerCase() == cleanEmail);
       _branches[idx] = _branches[idx].copyWith(managerEmails: currentList);
 
-      // Reevaluate current user role if affected
       if (_currentUser.email.toLowerCase() == cleanEmail && _currentUser.role != UserRole.superAdmin) {
         final stillManager = _branches.any((b) =>
             b.managerEmails.any((m) => m.toLowerCase() == cleanEmail));
@@ -158,6 +180,17 @@ class BarbershopProvider extends ChangeNotifier {
         }
       }
 
+      notifyListeners();
+    }
+  }
+
+  // Barber Action: Complete Appointment
+  void completeAppointment(String appointmentId) {
+    final index = _appointments.indexWhere((a) => a.id == appointmentId);
+    if (index != -1) {
+      _appointments[index] = _appointments[index].copyWith(
+        status: AppointmentStatus.completed,
+      );
       notifyListeners();
     }
   }
@@ -395,6 +428,7 @@ class BarbershopProvider extends ChangeNotifier {
       Professional(
         id: 'p1',
         name: 'Carlos "Barba" Silva',
+        email: 'carlos.barba@estacaoelite.com',
         role: 'Master Barber & Visagista',
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
         rating: 4.9,
@@ -406,6 +440,7 @@ class BarbershopProvider extends ChangeNotifier {
       Professional(
         id: 'p2',
         name: 'Marcos "Fade" Santos',
+        email: 'marcos.fade@estacaoelite.com',
         role: 'Especialista em Degradê',
         avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d',
         rating: 4.8,
@@ -417,6 +452,7 @@ class BarbershopProvider extends ChangeNotifier {
       Professional(
         id: 'p3',
         name: 'Lucas Visagista',
+        email: 'lucas.visagista@estacaoelite.com',
         role: 'Consultor de Imagem Masculina',
         avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e',
         rating: 5.0,
@@ -510,6 +546,20 @@ class BarbershopProvider extends ChangeNotifier {
         status: AppointmentStatus.scheduled,
         reminderEnabled: true,
         loyaltyPointsEarned: 80,
+      ),
+      Appointment(
+        id: 'apt_demo_2',
+        branchId: 'b1',
+        branchName: 'Estação Elite - Matriz Centro',
+        professionalId: 'p1',
+        professionalName: 'Carlos "Barba" Silva',
+        serviceOrPackageTitle: 'Corte Executive Elite',
+        price: 75.00,
+        dateTime: DateTime.now(),
+        timeSlot: '10:00',
+        status: AppointmentStatus.scheduled,
+        reminderEnabled: true,
+        loyaltyPointsEarned: 30,
       ),
     ]);
 

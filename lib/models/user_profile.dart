@@ -1,4 +1,4 @@
-enum UserRole { client, storeOwner, superAdmin }
+enum UserRole { client, barberProfessional, storeOwner, superAdmin }
 
 class UserProfile {
   final String id;
@@ -20,7 +20,9 @@ class UserProfile {
       case UserRole.superAdmin:
         return 'SUPER ADMINISTRADOR';
       case UserRole.storeOwner:
-        return 'GERENTE / DONO DE LOJA';
+        return 'DONO / GERENTE DE LOJA';
+      case UserRole.barberProfessional:
+        return 'PROFISSIONAL BARBEIRO';
       case UserRole.client:
         return 'CLIENTE ELITE';
     }
@@ -28,5 +30,6 @@ class UserProfile {
 
   bool get isSuperAdmin => role == UserRole.superAdmin;
   bool get isStoreOwner => role == UserRole.storeOwner || role == UserRole.superAdmin;
+  bool get isBarberProfessional => role == UserRole.barberProfessional;
   bool get isClient => role == UserRole.client;
 }

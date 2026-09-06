@@ -1,6 +1,7 @@
 class Professional {
   final String id;
   final String name;
+  final String email;
   final String role; // Master Barber, Especialista Barba, Visagista
   final String avatarUrl;
   final double rating;
@@ -12,6 +13,7 @@ class Professional {
   Professional({
     required this.id,
     required this.name,
+    this.email = '',
     required this.role,
     required this.avatarUrl,
     required this.rating,

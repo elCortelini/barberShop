@@ -10,6 +10,7 @@ import 'screens/my_appointments_screen.dart';
 import 'screens/loyalty_screen.dart';
 import 'screens/admin_management_screen.dart';
 import 'screens/super_admin_screen.dart';
+import 'screens/barber_panel_screen.dart';
 import 'screens/login_screen.dart';
 
 void main() async {
@@ -58,7 +59,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   Widget build(BuildContext context) {
     final provider = Provider.of<BarbershopProvider>(context);
 
-    // Build pages dynamically based on user role
+    // Build pages & tabs dynamically based on the 4 user roles
     final List<Widget> pages = [];
     final List<BottomNavigationBarItem> navItems = [];
 
@@ -73,64 +74,86 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       label: 'Início',
     ));
 
-    // Tab 1: Catalog (All roles)
-    pages.add(CatalogScreen(
-      onStartBooking: () => _navigateToTab(2),
-    ));
-    navItems.add(const BottomNavigationBarItem(
-      icon: Icon(Icons.grid_view_outlined),
-      activeIcon: Icon(Icons.grid_view),
-      label: 'Catálogo',
-    ));
-
-    // Tab 2: Booking (All roles)
-    pages.add(BookingScreen(
-      onBookingComplete: () => _navigateToTab(3),
-    ));
-    navItems.add(const BottomNavigationBarItem(
-      icon: Icon(Icons.calendar_month_outlined),
-      activeIcon: Icon(Icons.calendar_month),
-      label: 'Agendar',
-    ));
-
-    // Tab 3: Appointments (All roles)
-    pages.add(MyAppointmentsScreen(
-      onNewBooking: () => _navigateToTab(2),
-    ));
-    navItems.add(const BottomNavigationBarItem(
-      icon: Icon(Icons.event_available_outlined),
-      activeIcon: Icon(Icons.event_available),
-      label: 'Agenda',
-    ));
-
-    // Tab 4: Role Specific (Fidelidade for Client, Gestão for Store Owner / Super Admin)
-    if (provider.isClient) {
-      pages.add(const LoyaltyScreen());
+    if (provider.isBarberProfessional) {
+      // ---------------- BARBER PROFESSIONAL TABS ----------------
+      // Tab 1: Barber Agenda & Commissions
+      pages.add(const BarberPanelScreen());
       navItems.add(const BottomNavigationBarItem(
-        icon: Icon(Icons.stars_outlined),
-        activeIcon: Icon(Icons.stars),
-        label: 'Fidelidade',
+        icon: Icon(Icons.calendar_month_outlined),
+        activeIcon: Icon(Icons.calendar_month),
+        label: 'Meu Painel',
+      ));
+
+      // Tab 2: Catalog
+      pages.add(CatalogScreen(
+        onStartBooking: () => _navigateToTab(1),
+      ));
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.grid_view_outlined),
+        activeIcon: Icon(Icons.grid_view),
+        label: 'Catálogo',
       ));
     } else {
-      pages.add(const AdminManagementScreen());
-      navItems.add(const BottomNavigationBarItem(
-        icon: Icon(Icons.storefront_outlined),
-        activeIcon: Icon(Icons.storefront),
-        label: 'Gestão Loja',
+      // ---------------- CLIENT / OWNER / ADMIN TABS ----------------
+      // Tab 1: Catalog
+      pages.add(CatalogScreen(
+        onStartBooking: () => _navigateToTab(2),
       ));
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.grid_view_outlined),
+        activeIcon: Icon(Icons.grid_view),
+        label: 'Catálogo',
+      ));
+
+      // Tab 2: Booking Flow
+      pages.add(BookingScreen(
+        onBookingComplete: () => _navigateToTab(3),
+      ));
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.calendar_month_outlined),
+        activeIcon: Icon(Icons.calendar_month),
+        label: 'Agendar',
+      ));
+
+      // Tab 3: Appointments
+      pages.add(MyAppointmentsScreen(
+        onNewBooking: () => _navigateToTab(2),
+      ));
+      navItems.add(const BottomNavigationBarItem(
+        icon: Icon(Icons.event_available_outlined),
+        activeIcon: Icon(Icons.event_available),
+        label: 'Agenda',
+      ));
+
+      // Tab 4: Fidelidade (Client) OR Gestão Loja (Owner/Admin)
+      if (provider.isClient) {
+        pages.add(const LoyaltyScreen());
+        navItems.add(const BottomNavigationBarItem(
+          icon: Icon(Icons.stars_outlined),
+          activeIcon: Icon(Icons.stars),
+          label: 'Fidelidade',
+        ));
+      } else {
+        pages.add(const AdminManagementScreen());
+        navItems.add(const BottomNavigationBarItem(
+          icon: Icon(Icons.storefront_outlined),
+          activeIcon: Icon(Icons.storefront),
+          label: 'Gestão Loja',
+        ));
+      }
+
+      // Tab 5: Portal Super Admin (Super Admin only)
+      if (provider.isSuperAdmin) {
+        pages.add(const SuperAdminScreen());
+        navItems.add(const BottomNavigationBarItem(
+          icon: Icon(Icons.shield_outlined),
+          activeIcon: Icon(Icons.shield),
+          label: 'Super Admin',
+        ));
+      }
     }
 
-    // Additional Tab for Super Admin: Portal Super Admin
-    if (provider.isSuperAdmin) {
-      pages.add(const SuperAdminScreen());
-      navItems.add(const BottomNavigationBarItem(
-        icon: Icon(Icons.shield_outlined),
-        activeIcon: Icon(Icons.shield),
-        label: 'Super Admin',
-      ));
-    }
-
-    // Last Tab: Google Login & Profile Switcher (All roles)
+    // Final Tab: Profile & Account Switcher (All roles)
     pages.add(LoginScreen(
       onLoginSuccess: () => _navigateToTab(0),
     ));
@@ -140,7 +163,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
       label: 'Perfil/Login',
     ));
 
-    // Ensure index doesn't go out of bounds when switching roles
+    // Ensure tab index is inside bounds when switching role
     final safeIndex = _currentIndex >= pages.length ? 0 : _currentIndex;
 
     return Scaffold(
