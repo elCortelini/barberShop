@@ -7,10 +7,14 @@ import '../models/combo_package.dart';
 import '../models/appointment.dart';
 import '../models/loyalty.dart';
 import '../models/promo_banner.dart';
+import '../models/user_profile.dart';
 
 class BarbershopProvider extends ChangeNotifier {
-  // Current active branch selected by user
-  late Branch _selectedBranch;
+  // Super Admin fixed master email
+  static const String superAdminEmail = 'elcortelini@gmail.com';
+
+  // Current logged in user
+  late UserProfile _currentUser;
 
   // Data lists
   final List<Branch> _branches = [];
@@ -23,6 +27,9 @@ class BarbershopProvider extends ChangeNotifier {
   final List<LoyaltyTransaction> _loyaltyTransactions = [];
   final List<PromoBanner> _promoBanners = [];
 
+  // Active branch selected by user
+  late Branch _selectedBranch;
+
   // Loyalty user state
   int _userLoyaltyPoints = 280;
 
@@ -31,6 +38,7 @@ class BarbershopProvider extends ChangeNotifier {
   }
 
   // Getters
+  UserProfile get currentUser => _currentUser;
   Branch get selectedBranch => _selectedBranch;
   List<Branch> get branches => List.unmodifiable(_branches);
   List<ServiceItem> get services => List.unmodifiable(_services);
@@ -60,6 +68,98 @@ class BarbershopProvider extends ChangeNotifier {
     return _appointments
         .where((a) => a.status == AppointmentStatus.scheduled)
         .toList();
+  }
+
+  // Roles & Permissions helper
+  bool get isSuperAdmin => _currentUser.role == UserRole.superAdmin;
+  bool get isStoreOwner => _currentUser.role == UserRole.storeOwner || isSuperAdmin;
+  bool get isClient => _currentUser.role == UserRole.client;
+
+  // Authenticaton & Google Login
+  void loginWithGoogle({required String email, String? name}) {
+    final cleanEmail = email.trim().toLowerCase();
+    final displayName = name ?? (cleanEmail.contains('@') ? cleanEmail.split('@').first : cleanEmail);
+
+    UserRole resolvedRole = UserRole.client;
+
+    if (cleanEmail == superAdminEmail.toLowerCase()) {
+      resolvedRole = UserRole.superAdmin;
+    } else {
+      // Check if this email is assigned as a manager to any branch
+      final isManager = _branches.any((b) =>
+          b.managerEmails.any((m) => m.toLowerCase() == cleanEmail));
+      if (isManager) {
+        resolvedRole = UserRole.storeOwner;
+      }
+    }
+
+    _currentUser = UserProfile(
+      id: 'usr_${DateTime.now().millisecondsSinceEpoch}',
+      name: displayName,
+      email: cleanEmail,
+      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+      role: resolvedRole,
+    );
+
+    notifyListeners();
+  }
+
+  void logout() {
+    loginWithGoogle(email: 'cliente.demo@gmail.com', name: 'Cliente Demonstração');
+  }
+
+  // Super Admin: Assign manager email to branch
+  void assignManagerToBranch(String branchId, String managerEmail) {
+    final cleanEmail = managerEmail.trim().toLowerCase();
+    final idx = _branches.indexWhere((b) => b.id == branchId);
+    if (idx != -1) {
+      final currentList = List<String>.from(_branches[idx].managerEmails);
+      if (!currentList.contains(cleanEmail)) {
+        currentList.add(cleanEmail);
+        _branches[idx] = _branches[idx].copyWith(managerEmails: currentList);
+
+        // If logged-in user email was assigned, update current role
+        if (_currentUser.email.toLowerCase() == cleanEmail && _currentUser.role != UserRole.superAdmin) {
+          _currentUser = UserProfile(
+            id: _currentUser.id,
+            name: _currentUser.name,
+            email: _currentUser.email,
+            photoUrl: _currentUser.photoUrl,
+            role: UserRole.storeOwner,
+          );
+        }
+
+        notifyListeners();
+      }
+    }
+  }
+
+  // Super Admin: Remove manager email from branch
+  void removeManagerFromBranch(String branchId, String managerEmail) {
+    final cleanEmail = managerEmail.trim().toLowerCase();
+    final idx = _branches.indexWhere((b) => b.id == branchId);
+    if (idx != -1) {
+      final currentList = List<String>.from(_branches[idx].managerEmails);
+      currentList.removeWhere((e) => e.toLowerCase() == cleanEmail);
+      _branches[idx] = _branches[idx].copyWith(managerEmails: currentList);
+
+      // Reevaluate current user role if affected
+      if (_currentUser.email.toLowerCase() == cleanEmail && _currentUser.role != UserRole.superAdmin) {
+        final stillManager = _branches.any((b) =>
+            b.managerEmails.any((m) => m.toLowerCase() == cleanEmail));
+        if (!stillManager) {
+          _currentUser = UserProfile(
+            id: _currentUser.id,
+            name: _currentUser.name,
+            email: _currentUser.email,
+            photoUrl: _currentUser.photoUrl,
+            role: UserRole.client,
+          );
+        }
+      }
+
+      notifyListeners();
+    }
   }
 
   // Setters & Actions
@@ -95,7 +195,6 @@ class BarbershopProvider extends ChangeNotifier {
 
     _appointments.insert(0, newAppointment);
 
-    // Credit loyalty points upon booking
     _userLoyaltyPoints += pointsEarned;
     _loyaltyTransactions.insert(
       0,
@@ -158,14 +257,6 @@ class BarbershopProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateService(ServiceItem service) {
-    final idx = _services.indexWhere((s) => s.id == service.id);
-    if (idx != -1) {
-      _services[idx] = service;
-      notifyListeners();
-    }
-  }
-
   void removeService(String serviceId) {
     _services.removeWhere((s) => s.id == serviceId);
     notifyListeners();
@@ -206,7 +297,7 @@ class BarbershopProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Mock initial seed data
+  // Seed Initial Data
   void _initInitialData() {
     _branches.addAll([
       Branch(
@@ -217,6 +308,7 @@ class BarbershopProvider extends ChangeNotifier {
         isMain: true,
         openingHours: 'Seg - Sáb: 08:00 - 21:00',
         imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1',
+        managerEmails: ['gerente.centro@estacaoelite.com'],
       ),
       Branch(
         id: 'b2',
@@ -226,6 +318,7 @@ class BarbershopProvider extends ChangeNotifier {
         isMain: false,
         openingHours: 'Seg - Dom: 10:00 - 22:00',
         imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70',
+        managerEmails: ['gerente.shopping@estacaoelite.com'],
       ),
       Branch(
         id: 'b3',
@@ -235,10 +328,20 @@ class BarbershopProvider extends ChangeNotifier {
         isMain: false,
         openingHours: 'Ter - Sáb: 09:00 - 20:00',
         imageUrl: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033',
+        managerEmails: [],
       ),
     ]);
 
     _selectedBranch = _branches.first;
+
+    // Initial default user: Super Admin
+    _currentUser = UserProfile(
+      id: 'usr_super',
+      name: 'elcortelini',
+      email: superAdminEmail,
+      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+      role: UserRole.superAdmin,
+    );
 
     _services.addAll([
       ServiceItem(

@@ -99,6 +99,94 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Active User Profile Banner
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.darkCard,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: provider.isSuperAdmin
+                      ? AppTheme.primaryGold
+                      : (provider.isStoreOwner
+                          ? AppTheme.accentAmber
+                          : AppTheme.darkCardBorder),
+                ),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppTheme.primaryGold,
+                    child: Icon(
+                      provider.isSuperAdmin
+                          ? Icons.shield
+                          : (provider.isStoreOwner ? Icons.store : Icons.person),
+                      color: Colors.black,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              provider.currentUser.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: provider.isSuperAdmin
+                                    ? AppTheme.primaryGold
+                                    : (provider.isStoreOwner
+                                        ? AppTheme.accentAmber
+                                        : Colors.white24),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                provider.currentUser.roleDisplayName,
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: provider.isClient
+                                      ? Colors.white
+                                      : Colors.black,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          provider.currentUser.email,
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.white54),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => onNavigateTab(5), // Go to Profile / Login
+                    icon: const Icon(Icons.swap_horiz,
+                        size: 16, color: AppTheme.primaryGold),
+                    label: const Text('Trocar',
+                        style: TextStyle(
+                            fontSize: 11, color: AppTheme.primaryGold)),
+                  ),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 12),
 
             // Banner Carousel (Publicity)
